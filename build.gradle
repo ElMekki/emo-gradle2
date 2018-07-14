@@ -1,0 +1,50 @@
+apply plugin: 'java'
+
+//
+version='1.0.0'
+ext.gitCommit = System.getenv( "GIT_COMMIT" ) ?: 'HEAD'
+
+ext.gaia=[
+    outputDir: "$buildDir/gaiaVe"
+]
+
+task cleanOutputDir {
+    println "gaia: $gaia.outputDir"
+    doLast {
+        delete gaia.outputDir
+    }
+}
+
+clean.dependsOn cleanOutputDir
+
+task buildProperties(dependsOn: 'clean') {
+    def propsFile= file("$gaia.outputDir/version.properties")
+    ext.outputDir= propsFile.getParentFile()
+    doFirst {
+        writeProjectProperties(['version','gitCommit'], propsFile)
+    }
+}
+
+def writeProjectProperties(keys, propsFile ) {
+    def outputDir = propsFile.getParentFile()
+    outputDir.exists() || outputDir.mkdirs()
+
+    def buildProps = new Properties()
+            project.properties.findAll( { it.key in keys } ) .each {
+            buildProps .put( it.key, it.value.toString() )
+    }
+    
+    def writer = new FileWriter( propsFile )
+    try {
+        buildProps.store( writer, null)
+        writer.flush()
+    } finally {
+        writer.close()
+    }
+
+}
+
+processResources {
+    dependsOn buildProperties
+    from buildProperties.outputDir
+}
